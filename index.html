@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head> <title>Chain</title> </head>
+  <body>
+    <table>
+      <tr align="center" style="background-color: white;color: black;"  >
+        <td width="50" >Loop: <h2 id="loop">0</h2></td>
+        <td width="50" >sec: <h2 id="diff_sec">0</h2></td>
+        <td align="left" width="200" rowspan="2" >
+          <b>Eat food:</b> <label id="eat-food"></label> <br>
+          <b>ai-work:</b> <label id="ai-work"></label> <br>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2" id="canvas-place" >
+          <!-- <canvas id="canvas"></canvas> -->
+        </td>
+      </tr>
+    </table>
+   
+    
+
+     <!-- Load TensorFlow.js -->
+     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+     <!-- Load KNN Classifier -->
+     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+     
+    <script src="dot-ai.js"></script>
+  </body>
+</html>
