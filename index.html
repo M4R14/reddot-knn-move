@@ -1,6 +1,57 @@
 <!DOCTYPE html>
 <html>
-  <head> <title>Chain</title> </head>
+  <head>
+    <title>Chain</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+      google.charts.setOnLoadCallback(drawChartDist);
+      let ml_win = 0
+      let random_win = 0
+      let loop = 0
+      let = g_data = [
+          ['loop', 'ml', 'random'],
+          [0, 0, 0],
+      ]
+
+      let loop_dist = 0
+      let ml_dist_win = 0
+      let random_dist_win = 0
+      const g_data_dist = [
+        ['loop', 'ml', 'random'],
+        [0, 0, 0],
+      ]
+
+      function drawChart(g_data) {
+        var data = google.visualization.arrayToDataTable(g_data);
+
+        var options = {
+          title: 'Company Performance',
+          curveType: 'function',
+          legend: { position: 'bottom' }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
+
+        chart.draw(data, options);
+      }
+
+      function drawChartDist(g_data_dist) {
+        var data = google.visualization.arrayToDataTable(g_data_dist);
+
+        var options = {
+          title: 'Company Performance',
+          curveType: 'function',
+          legend: { position: 'bottom' }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('curve_chart_dis'));
+
+        chart.draw(data, options);
+      }
+    </script>
+  </head>
   <body>
     <table>
       <tr align="center" style="background-color: white;color: black;"  >
@@ -9,6 +60,9 @@
         <td align="left" width="200" rowspan="2" >
           <b>Eat food:</b> <label id="eat-food"></label> <br>
           <b>ai-work:</b> <label id="ai-work"></label> <br>
+          <label id="xxx"></label> <br>
+          <div id="curve_chart" style="width: 900px; height: 300px"></div>
+          <div id="curve_chart_dis" style="width: 900px; height: 300px"></div>
         </td>
       </tr>
       <tr>

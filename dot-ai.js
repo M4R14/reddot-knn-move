@@ -3,7 +3,7 @@ class Action {
     y = 0
     res= ''
     props = {}
-    step = 1
+    step = 999
 
     constructor(props) {
         this.props = props
@@ -35,20 +35,18 @@ class Action {
         return _q
     }
 
-    get diff_x () { return this.x - this.nx }
-    get diff_y () { return this.y - this.ny }
+    get diff_x () { return this.nx - this.x }
+    get diff_y () { return this.ny - this.y }
 
     get dist() {
-        return Math.ceil(Math.sqrt(Math.pow(this.x - this.nx, 2) + Math.pow(this.y - this.ny, 2)))
+        return (Math.sqrt(Math.pow(this.x - this.nx, 2) + Math.pow(this.y - this.ny, 2)))
     }
 
     get zeta() {
         const y = Math.abs(this.y - this.ny)
         const x =  Math.abs(this.x - this.nx)
-        return Math.ceil(Math.tan((y)/(x)))
+        return (Math.tan((y)/(x)))
     }
-
-    
 
     get tensor() {
         const g = (value) => {
@@ -58,54 +56,98 @@ class Action {
         }
 
         const l = (value) => {
-            if (value <= 40) { return value }
-            // if (value <= 2) { return 1 }
-            // else if (value <= 3) { return 0.25 }
-            // else if (value <= 4) { return 0.5 }
-            // else if (value <= 5) { return 1 }
-            // else if (value <= 7) { return 2 }
-            // else if (value <= 9) { return 3 }
-            // else if (value <= 11) { return 4 }
-            // else if (value <= 13) { return 5 }
-            // else if (value <= 15) { return 5.5 }
-            // else if (value <= 17) { return 6 }
-            // else if (value <= 18) { return 6.5 }
-            // else if (value <= 19) { return 7 }
-            // else if (value <= 30) { return 8 }
-            // else if (value <= 40) { return 9 }
-            else if (value <= 100) { return 100 }
-            else if (value <= 300) { return 300 }
-            else if (value <= 400) { return 400 }
-            else { return 999  }
+            // if (value <= 40) { return value }
+            if (value <= 1) { return 'L0' }
+            else if (value <= 2.5) { return 'L0.25' }
+            else if (value <= 5) { return 'L0.5' }
+            else if (value <= 10) { return 'L1' }
+            else if (value <= 20) { return 'L2' }
+            else if (value <= 25) { return 'L2.5' }
+            else if (value <= 30) { return 'L3' }
+            else if (value <= 50) { return 'L3' }
+            else if (value <= 70) { return 'L7' }
+            else if (value <= 110) { return 'L110' }
+            else if (value <= 130) { return 'L130' }
+            else { return 'OUT'  }
+        }
+
+        const q = (point)  => {
+            if (point.join(',') === [1, 1].join(',')) { return 'Q1' }
+            else if (point.join(',') === [-1,1].join(',')) { return 'Q2' }
+            else if (point.join(',') === [-1,-1].join(',')) { return 'Q3' }
+            else if (point.join(',') === [1,-1].join(',')) { return 'Q4' }
+
+            if (point.join(',') === [0, 1].join(',')) { return 'R' }
+            else if (point.join(',') === [1,0].join(',')) { return 'F' }
+            else if (point.join(',') === [0,-1].join(',')) { return 'L' }
+            else if (point.join(',') === [-1,0].join(',')) { return 'B' }
         }
 
         const data = [
-            [g(this.diff_x), g(this.diff_y)],
+            [(this.diff_x), (this.diff_y)],
+            // [g(this.diff_x), g(this.diff_y)],
+            // q([g(this.diff_x), g(this.diff_y)]),
             [this.x, this.y],
-            [this.nx, this.ny],
+            // [this.nx, this.ny],
             // this.step,
             // l(this.dist),
             (this.dist),
-            this.zeta, 
+            // this.zeta, 
         ]
-        // console.log('toTensor', data)
+       
         return tf.tensor(data)
     }
     toTensor_step() {
+        const g = (value) => {
+            if (value == 0) { return 0 }
+            else if (value > 0) { return 1  }
+            else if (value < 0) { return -1 }
+        }
+        const q = (point)  => {
+            if (point.join(',') === [1, 1].join(',')) { return 'Q1' }
+            else if (point.join(',') === [-1,1].join(',')) { return 'Q2' }
+            else if (point.join(',') === [-1,-1].join(',')) { return 'Q3' }
+            else if (point.join(',') === [1,-1].join(',')) { return 'Q4' }
+
+            if (point.join(',') === [0, 1].join(',')) { return 'R' }
+            else if (point.join(',') === [1,0].join(',')) { return 'F' }
+            else if (point.join(',') === [0,-1].join(',')) { return 'L' }
+            else if (point.join(',') === [-1,0].join(',')) { return 'B' }
+        }
+
+        const l = (value) => {
+            value = Math.abs(value)
+            // if (value <= 40) { return value }
+            if (value <= 1) { return 'L0' }
+            else if (value <= 2.5) { return 'L0.25' }
+            else if (value <= 5) { return 'L0.5' }
+            else if (value <= 10) { return 'L1' }
+            else if (value <= 20) { return 'L2' }
+            else if (value <= 25) { return 'L2.5' }
+            else if (value <= 30) { return 'L3' }
+            else if (value <= 50) { return 'L3' }
+            else if (value <= 70) { return 'L7' }
+            else if (value <= 110) { return 'L110' }
+            else if (value <= 130) { return 'L130' }
+            else { return 'OUT'  }
+        }
+
         const data = [
-            this.x,
-            this.y,
+            [(this.diff_x), (this.diff_y)],
+            [l(this.diff_x), l(this.diff_y)],
             // this.res,
-            this.dist,
+            q([g(this.diff_x), g(this.diff_y)]),
+            // this.dist,
+            l(this.dist),
             // this.zeta,
         ]
-        
+        console.log('walk-step toTensor_step', data)
         return tf.tensor(data)
     }
   }
 
 data = [
-    new Action({ y: 1, x: 100, res: 'w' }),
+    new Action({ y: 0, x: 0, res: 'w' }),
 ];
 
 let addExample = 0
@@ -146,6 +188,8 @@ class People
 {
     id = 0
     _x = 0
+    nx = 0
+    ny = 0
     _y = 0
     step = 0
     color = 'red'
@@ -219,26 +263,37 @@ class People
 
             if (foods) {
                 let food_min_dist = null
-                const _foods = foods.filter(f => f.constructor.name == Food.name).map(n => {
-                    const dist = Math.pow(this.x - n.x, 2) + Math.pow( this.y - n.y, 2)
-                    n.dist = Math.sqrt(dist);
-    
-                    if (food_min_dist == null) {
-                        food_min_dist = n
-                    }  else {
-                        if (food_min_dist.dist >  n.dist) {
+                const _foods = foods.filter(f => f.constructor.name == Food.name)
+                    .map(n => {
+                        const dist = Math.pow(this.x - n.x, 2) + Math.pow( this.y - n.y, 2)
+                        n.dist = Math.sqrt(dist);
+        
+                        if (food_min_dist == null) {
                             food_min_dist = n
+                        }  else {
+                            if (food_min_dist.dist >  n.dist) {
+                                food_min_dist = n
+                            }
                         }
-                    }
-    
-                    return n 
-                })
-    
-                if (_foods.length > 0) {
+        
+                        return n 
+                    })
+        
+                if (food_min_dist) {
                     this.nav = await this.predictNav(food_min_dist, this.nav);
-                    this.step = 1
                     // this.step = Math.round(food_min_dist.dist)
-                    // this.step = await this.predictStep(food_min_dist, this.nav, food_min_dist.dist);
+                    const steps = [ 0, 1, 2, 4, 8, 16, 32, 50, 100, 200, 300 ]
+                    const _steps = steps[parseInt(Math.random() * steps.length)]
+                    // const _steps = parseInt(Math.random() * food_min_dist.dist)
+
+                    this.step = await this.predictStep(food_min_dist, this.nav, _steps);
+                    foods.filter(f => f.constructor.name == Food.name).map((f => {
+                        f.color = "orange"
+                        if (f.id == food_min_dist.id) {
+                            f.color = 'green'
+                        }
+                    }))
+                    // callback();
                 }
             }
         }
@@ -250,8 +305,15 @@ class People
         const food = food_min_dist
         // console.log('predictStep', {nav, step, _step});
 
-        const action = new Action({ x: food.x - this.x, y: this.y - food.y, res: nav });
-        const result = await classifierStep.predictClass(action.toTensor_step());
+        const action = new Action({ x: food.x, y: food.y, nx: this.x, ny: this.y, res: nav });
+        let result = null
+        try {
+            result = await classifierStep.predictClass(action.toTensor_step());
+        } catch (error) {
+            classifierStep.addExample(action.toTensor_step(), Math.ceil(_step) );
+            result = await classifierStep.predictClass(action.toTensor_step());
+        }
+       
 
         const dist_by_random = ((() => { 
            let x = this.x
@@ -282,18 +344,26 @@ class People
         })()); 
 
         if (dist_by_ml <= dist_by_random) {
-            _step = result.label;
             console.log('walk-step-ml', {
                 _step,
-                food_dist: food.dist
+                "label": result.label,
+                'action.res': action.res,
+                "action.dist": action.dist,
                 // step,
-                // dist_by_ml,
-                // dist_by_random
+                dist_by_ml,
+                dist_by_random,
+                result,
             });
+            _step = result.label;
+            
+            ml_dist_win += 1
         } else {
+            random_dist_win += 1
             console.log('walk-step', { _step: Math.ceil(_step), step }, action, {dist_by_ml, dist_by_random});
             classifierStep.addExample(action.toTensor_step(), Math.ceil(_step) );
         }
+
+        g_data_dist.push([ loop_dist += 1, ml_dist_win, random_dist_win  ])
 
         return _step
     }
@@ -321,13 +391,16 @@ class People
 
         if (Math.round(dist_by_ml) <= Math.round(dist_by_random)) {
             _nav = result.label;
+            ml_win += 1
             // console.log('walk-ml', _nav);
         } else {
+            random_win += 1
             addExample += 1
             console.log('walk', action);
             classifier.addExample(action.tensor, _nav);
             console.log('walk', result, {dist_by_ml, dist_by_random});
         }
+        g_data.push([loop += 1, ml_win, random_win ])
         return _nav
     }
 
@@ -352,6 +425,7 @@ class People
     }
 
     walk() {
+        if (this.step <= 0) { return; }
         const { x, y } = this.nextPoint(this.nav)
         this.y = y
         this.x = x
@@ -369,9 +443,9 @@ class People
         if (over.length > 0) {
             over.forEach(food => {
                 const nextFoods = foods.filter(xf => xf.id != food.id);
-                food.x = parseInt(Math.random() * (this.canvas.width))
-                food.y = parseInt(Math.random() * (this.canvas.height))
-                nextFoods.push(food)
+                // food.x = parseInt(Math.random() * (this.canvas.width))
+                // food.y = parseInt(Math.random() * (this.canvas.height))
+                // nextFoods.push(food)
                 eat_food += 1
                 callback(nextFoods)
             })
@@ -510,6 +584,7 @@ window.onload = function() {
     const eDiffSec = document.getElementById('diff_sec')
     const eAiWork = document.getElementById('ai-work')
     const eEatFood = document.getElementById('eat-food')
+    const eXxx = document.getElementById('xxx')
     
     const tick = function() {
         const b = new Date();
@@ -518,7 +593,11 @@ window.onload = function() {
         eDiffSec.innerText = diff_sec;
         eAiWork.innerText = addExample;
         eEatFood.innerText = eat_food;
-
+        eXxx.innerText = eat_food / addExample;
+       
+        drawChart(g_data)
+        drawChartDist(g_data_dist)
+        
         update();
         draw();
         requestAnimationFrame(tick);
@@ -530,7 +609,7 @@ window.onload = function() {
         foods.push(new Food(e.offsetX, e.offsetY, canvas))
     };
 
-    let foods = createFoods(100);
+    let foods = createFoods(500);
     let nodes = createChain(1); // you can also pass radius as a second param
     tick();
 }
