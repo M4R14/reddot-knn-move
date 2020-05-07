@@ -7,6 +7,11 @@
       google.charts.load('current', {'packages':['corechart']});
       google.charts.setOnLoadCallback(drawChart);
       google.charts.setOnLoadCallback(drawChartDist);
+      google.charts.setOnLoadCallback(drawChartMl);
+
+      let ml_case = 0
+      let random_case = 0
+
       let ml_win = 0
       let random_win = 0
       let loop = 0
@@ -23,12 +28,29 @@
         [0, 0, 0],
       ]
 
-      function drawChart(g_data) {
-        var data = google.visualization.arrayToDataTable(g_data);
+      function drawChartMl(g_data_dist) {
+        var data = google.visualization.arrayToDataTable([
+          [ 'loop', 'ml'],
+          // ...g_data_dist.map(n => [ n[0],  n[1] ])
+        ]);
 
         var options = {
           title: 'Company Performance',
           curveType: 'function',
+          legend: { position: 'bottom' }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById('curve_chart_ml'));
+
+        chart.draw(data, options);
+      }
+
+      function drawChart(g_data) {
+        var data = google.visualization.arrayToDataTable(g_data);
+
+        var options = {
+          title: 'Nav (W, A, S, D)',
+          // curveType: 'function',
           legend: { position: 'bottom' }
         };
 
@@ -41,8 +63,8 @@
         var data = google.visualization.arrayToDataTable(g_data_dist);
 
         var options = {
-          title: 'Company Performance',
-          curveType: 'function',
+          title: 'Step Move',
+          // curveType: 'function',
           legend: { position: 'bottom' }
         };
 
@@ -58,11 +80,14 @@
         <td width="50" >Loop: <h2 id="loop">0</h2></td>
         <td width="50" >sec: <h2 id="diff_sec">0</h2></td>
         <td align="left" width="200" rowspan="2" >
-          <b>Eat food:</b> <label id="eat-food"></label> <br>
-          <b>ai-work:</b> <label id="ai-work"></label> <br>
-          <label id="xxx"></label> <br>
-          <div id="curve_chart" style="width: 900px; height: 300px"></div>
-          <div id="curve_chart_dis" style="width: 900px; height: 300px"></div>
+          <input type="checkbox" id="use-ai" name="vehicle1" value="Bike">
+          <label for="use-ai"> Use AI</label><br>
+          <br>
+          <div id="curve_chart" style="width: 400px; height: 150px"></div>
+          <div id="curve_chart_dis" style="width: 400px; height: 150px"></div>
+        </td>
+        <td align="left" width="200" rowspan="2" >
+          <div id="curve_chart_ml" style="width: 400px; height: 150px"></div>
         </td>
       </tr>
       <tr>

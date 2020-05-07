@@ -1,9 +1,11 @@
 class Action {
     x = 0
-    y = 0
+    nx = 0
+    x = 0
+    ny = 0
     res= ''
     props = {}
-    step = 999
+    step = 1
 
     constructor(props) {
         this.props = props
@@ -31,7 +33,7 @@ class Action {
                 _q = key
             }
         })
-        console.log(_q, _zeta, condition[_q] )
+        // console.log(_q, _zeta, condition[_q] )
         return _q
     }
 
@@ -45,7 +47,14 @@ class Action {
     get zeta() {
         const y = Math.abs(this.y - this.ny)
         const x =  Math.abs(this.x - this.nx)
+        if (y == 0 || y == 0) {
+            return 0
+        }
         return (Math.tan((y)/(x)))
+    }
+
+    get slope() {
+        return this.diff_y == 0 || this.diff_x == 0 ? 0 : this.diff_y/this.diff_x
     }
 
     get tensor() {
@@ -84,15 +93,18 @@ class Action {
         }
 
         const data = [
+            // this.zeta,
+            // this.slope,
             [(this.diff_x), (this.diff_y)],
-            // [g(this.diff_x), g(this.diff_y)],
             // q([g(this.diff_x), g(this.diff_y)]),
             [this.x, this.y],
-            // [this.nx, this.ny],
-            // this.step,
-            // l(this.dist),
+            [this.nx, this.ny],
             (this.dist),
-            // this.zeta, 
+            // [g(this.diff_x), g(this.diff_y)],
+            // [this.x, this.y],
+            // this.nx, this.ny,
+            // l(this.dist),
+            // this.step, 
         ]
        
         return tf.tensor(data)
@@ -133,15 +145,15 @@ class Action {
         }
 
         const data = [
-            [(this.diff_x), (this.diff_y)],
-            [l(this.diff_x), l(this.diff_y)],
-            // this.res,
-            q([g(this.diff_x), g(this.diff_y)]),
-            // this.dist,
+            [this.diff_x, (this.diff_y)],
+            this.dist,
+            // [this.x, this.y],
+            // [this.nx, this.ny],
+            // q[g(this.diff_x), g(this.diff_y)],
+            this.res,
             l(this.dist),
-            // this.zeta,
         ]
-        console.log('walk-step toTensor_step', data)
+        // console.log('walk-step toTensor_step', data)
         return tf.tensor(data)
     }
   }
@@ -165,11 +177,6 @@ const init = async function() {
     classifier.addExample(act.tensor, act.res);
     classifierStep.addExample(act.toTensor_step(), act.step);
   })
-
-  // Make a prediction.
-  const x = new Action({ x: -5, y: 1 })
-  const result = await classifier.predictClass(x.tensor);
-  console.log(result);
 }
 
 init();
@@ -186,6 +193,8 @@ function makeid(length) {
 
 class People
 {
+    use_ai = false
+    main_color = ''
     id = 0
     _x = 0
     nx = 0
@@ -196,8 +205,9 @@ class People
     radius = 1
     canvas =  null
     nav = 'w'
-    speed = 1
+    speed = 2.5
     _isDanger = false
+    score = 0
 
     constructor (radius, canvas) {
         this.id = makeid(8)
@@ -255,47 +265,30 @@ class People
             'wa', 'wd',
             'as', 'ds',
         ]
+        const steps = Array.from({length: 10}, (v, k) => k+1); 
 
         if (this.step <= 0) {
-            this.nav = control[parseInt(Math.random() * control.length)]
-            let nextStep = parseInt(Math.random() * this.canvas.height)
-            this.step = nextStep == 0 ? 1 : nextStep
-
+            let nextNav = control[parseInt(Math.random() * control.length)]
+            let nextStep = steps[parseInt(Math.random() * steps.length)]
+            // this.step = 5
+            // console.log(this.color,'random',{ nav: this.nav })
             if (foods) {
-                let food_min_dist = null
-                const _foods = foods.filter(f => f.constructor.name == Food.name)
-                    .map(n => {
-                        const dist = Math.pow(this.x - n.x, 2) + Math.pow( this.y - n.y, 2)
-                        n.dist = Math.sqrt(dist);
-        
-                        if (food_min_dist == null) {
-                            food_min_dist = n
-                        }  else {
-                            if (food_min_dist.dist >  n.dist) {
-                                food_min_dist = n
-                            }
-                        }
-        
-                        return n 
-                    })
+                let food_min_dist = foods.filter(f => f.constructor.name == Food.name)
+                    .sort((a, b) => {
+                        const dist_a = Math.sqrt(Math.pow(this.x - a.x, 2) + Math.pow( this.y - a.y, 2))
+                        const dist_b = Math.sqrt(Math.pow(this.x - b.x, 2) + Math.pow( this.y - b.y, 2))
+                        return dist_a - dist_b
+                    })[0]
         
                 if (food_min_dist) {
-                    this.nav = await this.predictNav(food_min_dist, this.nav);
-                    // this.step = Math.round(food_min_dist.dist)
-                    const steps = [ 0, 1, 2, 4, 8, 16, 32, 50, 100, 200, 300 ]
-                    const _steps = steps[parseInt(Math.random() * steps.length)]
-                    // const _steps = parseInt(Math.random() * food_min_dist.dist)
-
-                    this.step = await this.predictStep(food_min_dist, this.nav, _steps);
-                    foods.filter(f => f.constructor.name == Food.name).map((f => {
-                        f.color = "orange"
-                        if (f.id == food_min_dist.id) {
-                            f.color = 'green'
-                        }
-                    }))
-                    // callback();
+                    this.target = food_min_dist
+                    nextNav = await this.predictNav(food_min_dist, nextNav);
+                    nextStep = await this.predictStep(food_min_dist, nextNav, nextStep);
+                    console.log('predictStep', { nextStep, nextNav });
                 }
             }
+            this.nav = nextNav
+            this.step = nextStep
         }
     }
 
@@ -303,9 +296,8 @@ class People
         let _nav = nav
         let _step = Math.round(step)
         const food = food_min_dist
-        // console.log('predictStep', {nav, step, _step});
 
-        const action = new Action({ x: food.x, y: food.y, nx: this.x, ny: this.y, res: nav });
+        const action = new Action({ x: food.x, y: food.y, nx: this.x, ny: this.y });
         let result = null
         try {
             result = await classifierStep.predictClass(action.toTensor_step());
@@ -313,12 +305,18 @@ class People
             classifierStep.addExample(action.toTensor_step(), Math.ceil(_step) );
             result = await classifierStep.predictClass(action.toTensor_step());
         }
-       
 
-        const dist_by_random = ((() => { 
+        if (this.use_ai) {
+            return result.label
+        }
+
+        console.log('predictStep', { nav: this.nav, step: result.label, _step, _nav });
+
+
+        const dist_by_random = Math.round((() => { 
            let x = this.x
            let y = this.y
-            for (let index = 0; index < step; index++) {
+            for (let index = 0; index < _step; index++) {
                 const poin = this.nextPoint(_nav, x, y)
                 x = poin.x
                 y = poin.y
@@ -329,10 +327,10 @@ class People
             return dist
         })()); 
         
-        const dist_by_ml = ((() => { 
+        const dist_by_ml = Math.round((() => { 
             let x = this.x
             let y = this.y
-            for (let index = 0; index < result.label; index++) {
+            for (let index = 0; index < Number(result.label); index++) {
                 const poin = this.nextPoint(_nav, x, y)
                 x = poin.x
                 y = poin.y
@@ -343,24 +341,19 @@ class People
             return dist
         })()); 
 
+        console.log(this.color, 'predictStep', 'walk-step', {dist_by_ml, dist_by_random}, { _step, ml_step: result.label, res: nav });
         if (dist_by_ml <= dist_by_random) {
-            console.log('walk-step-ml', {
-                _step,
-                "label": result.label,
-                'action.res': action.res,
-                "action.dist": action.dist,
-                // step,
-                dist_by_ml,
-                dist_by_random,
-                result,
-            });
             _step = result.label;
-            
-            ml_dist_win += 1
+            if (dist_by_ml < dist_by_random) {
+                ml_dist_win += 1
+            }
+            console.warn (this.color,'walk-step-ml', result);
+
+            classifierStep.addExample(action.toTensor_step(), _step);
         } else {
             random_dist_win += 1
-            console.log('walk-step', { _step: Math.ceil(_step), step }, action, {dist_by_ml, dist_by_random});
-            classifierStep.addExample(action.toTensor_step(), Math.ceil(_step) );
+            console.error(this.color,'walk-step-Random', _step);
+            classifierStep.addExample(action.toTensor_step(), _step);
         }
 
         g_data_dist.push([ loop_dist += 1, ml_dist_win, random_dist_win  ])
@@ -375,30 +368,40 @@ class People
         const action = new Action({ x: food.x, y: food.y, nx: this.x, ny: this.y });
         const result = await classifier.predictClass(action.tensor);
 
-        const dist_by_random = ((() => { 
-            const { x, y } = this.nextPoint(_nav)
-            let dist = Math.pow(x - food.x, 2) + Math.pow( y - food.y, 2)
-            dist = Math.sqrt(dist);
-            return dist
-        })()); 
-        
-        const dist_by_ml = ((() => { 
-            const { x, y } = this.nextPoint(result.label)
-            let dist = Math.pow(x - food.x, 2) + Math.pow( y - food.y, 2)
-            dist = Math.sqrt(dist);
-            return dist
-        })()); 
+        if (this.use_ai) {
+            return result.label
+        }
 
-        if (Math.round(dist_by_ml) <= Math.round(dist_by_random)) {
+        const dist = (_nav_wasd) => {
+            let x = this.x
+            let y = this.y
+            for (let index = 0; index < 2; index++) {
+                const poin = this.nextPoint(_nav_wasd, x, y)
+                x = poin.x
+                y = poin.y
+            }
+            let dist = Math.pow(x - food.x, 2) + Math.pow( y - food.y, 2)
+            dist = Math.sqrt(dist);
+            return dist
+        }
+
+        const dist_by_random = dist(_nav);
+        const dist_by_ml = dist(result.label);
+
+        console.log(this.color, 'walk-dist_', { dist_by_ml, dist_by_random, label: result.label, _nav, nav: this.nav });
+
+        if ((dist_by_ml) <= (dist_by_random)) {
+            if (dist_by_ml < dist_by_random) {
+                ml_win += 1
+            }
             _nav = result.label;
-            ml_win += 1
-            // console.log('walk-ml', _nav);
+            classifier.addExample(action.tensor, result.label);
+            console.log(this.color,'walk-ml', _nav);
         } else {
             random_win += 1
-            addExample += 1
-            console.log('walk', action);
+            // console.log('walk-nav', action);
             classifier.addExample(action.tensor, _nav);
-            console.log('walk', result, {dist_by_ml, dist_by_random});
+            console.log(this.color,'walk-nav', result, {dist_by_ml, dist_by_random});
         }
         g_data.push([loop += 1, ml_win, random_win ])
         return _nav
@@ -425,11 +428,12 @@ class People
     }
 
     walk() {
+        console.log(this.color, 'walk', { step: this.step, nav:this.nav })
         if (this.step <= 0) { return; }
         const { x, y } = this.nextPoint(this.nav)
         this.y = y
         this.x = x
-
+        
         this.step -= 1
     }
 
@@ -446,7 +450,12 @@ class People
                 // food.x = parseInt(Math.random() * (this.canvas.width))
                 // food.y = parseInt(Math.random() * (this.canvas.height))
                 // nextFoods.push(food)
+                if (this.target.id == food.id) {
+                    this.target == null
+                }
+                
                 eat_food += 1
+                this.score += 1
                 callback(nextFoods)
             })
         }
@@ -464,9 +473,9 @@ class People
     }
 
     setColor() {
-        this.color = 'red'
+        this.color = this.main_color || 'orange'
         if (this.isDanger) {
-            this.color = 'blue'
+            this.color =  'red' 
         }
     }
 }
@@ -516,18 +525,22 @@ class Food {
     }
 }
 
+const distance = (xa, ya, xb, yb ) => {
+    return Math.sqrt(Math.pow(xa - xb, 2) + Math.pow(ya - yb, 2))
+}
+
 window.onload = function() {
     // we'll put all our code within this function
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
-    const colors = ["blue", "green", "orange", "red", "#2266FF"];
+    const colors = ["blue", "green", "orange", "red", "#152c40"];
     let isMouseDown = false;
     document.getElementById('canvas-place').appendChild(canvas);
-    canvas.width  = window.screen.width /2;
-    canvas.height = window.screen.height /2
+    canvas.width  = 800;
+    canvas.height = 500
     // styles -------------------------
     document.body.style.background = "#000000";
-    canvas.style.background = "#111111";
+    canvas.style.background = "#152c40";
     canvas.style.display = "block";
     canvas.style.margin = "0 auto";
     // --------------------------------
@@ -538,6 +551,12 @@ window.onload = function() {
         for (let i = 0; i < n; i ++) {
           _nodes.push(new People(radius, canvas));
         }
+
+        // const xxx = new People(radius, canvas);
+        // xxx.use_ai = true
+        // xxx.main_color = 'red'
+        // _nodes.push(xxx)
+
         return _nodes;
     }
 
@@ -552,12 +571,15 @@ window.onload = function() {
     }
 
     const update = function() {
-        nodes.forEach(node => {
-            node.think(foods)
-            node.walk()
+        nodes.forEach(async node => {
+            await node.think(foods)
+            if (node.step > 0) {
+                node.walk()
+            }
             node.eat(foods, (next) => {foods = next})
             // node.vision(nodes, (next) => {nodes = next})
             node.setColor()
+
         })
       }
       const draw = function() {
@@ -566,9 +588,31 @@ window.onload = function() {
           context.beginPath();
           context.fillStyle = node.color;
           context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
+          context.fillText(`score: ${node.score}`, node.x + node.radius + 2, node.y + 2);
+          context.fillText(
+            `${node.nav},${node.step}` ,
+            node.x + node.radius + 2,
+            node.y - 8
+            );
+
+          if (node.target) {
+            const dist = (distance(node.x, node.y, node.target.x, node.target.y)).toFixed(4)
+            context.fillText(
+                `dist: ${dist}` ,
+                node.x + node.radius + 2,
+                node.y + 12
+            );
+
+            context.moveTo(node.x, node.y);
+            context.strokeStyle = node.color;
+            context.lineTo(node.target.x, node.target.y);
+            context.stroke();
+          }
+
           context.fill();
           context.closePath();
         })
+
         foods.forEach(food => {
             context.beginPath();
             context.fillStyle = food.color;
@@ -591,13 +635,14 @@ window.onload = function() {
         const diff_sec = (b - start) / 1000;
         eLoop.innerText = count;
         eDiffSec.innerText = diff_sec;
-        eAiWork.innerText = addExample;
-        eEatFood.innerText = eat_food;
-        eXxx.innerText = eat_food / addExample;
+        // eAiWork.innerText = addExample;
+        // eEatFood.innerText = eat_food;
+        // eXxx.innerText = eat_food / addExample;
        
         drawChart(g_data)
         drawChartDist(g_data_dist)
-        
+        drawChartMl(g_data_dist)
+
         update();
         draw();
         requestAnimationFrame(tick);
@@ -609,7 +654,19 @@ window.onload = function() {
         foods.push(new Food(e.offsetX, e.offsetY, canvas))
     };
 
-    let foods = createFoods(500);
-    let nodes = createChain(1); // you can also pass radius as a second param
+    let foods = createFoods(100);
+    let nodes = createChain(10); // you can also pass radius as a second param
+    
     tick();
+
+    document.getElementById('use-ai')
+        .addEventListener('click', () => {
+            nodes = nodes.map(n => {
+                n.use_ai = !n.use_ai
+                if (n.use_ai) {
+                    n.main_color = 'red'
+                }
+                return n
+            })
+        })
 }
