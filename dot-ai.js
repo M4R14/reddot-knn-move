@@ -5,7 +5,7 @@ class Action {
     ny = 0
     res= ''
     props = {}
-    step = 1
+    step = 0
 
     constructor(props) {
         this.props = props
@@ -93,14 +93,14 @@ class Action {
         }
 
         const data = [
-            // this.zeta,
-            // this.slope,
+            this.zeta,
+            this.slope,
             [(this.diff_x), (this.diff_y)],
-            // q([g(this.diff_x), g(this.diff_y)]),
-            [this.x, this.y],
-            [this.nx, this.ny],
-            (this.dist),
-            // [g(this.diff_x), g(this.diff_y)],
+            q([g(this.diff_x), g(this.diff_y)]),
+            // [this.x, this.y],
+            // [this.nx, this.ny],
+            // (this.dist),
+            [g(this.diff_x), g(this.diff_y)],
             // [this.x, this.y],
             // this.nx, this.ny,
             // l(this.dist),
@@ -159,7 +159,7 @@ class Action {
   }
 
 data = [
-    new Action({ y: 0, x: 0, res: 'w' }),
+    new Action({ y: 0, x: 0, res: 'x', step: 0 }),
 ];
 
 let addExample = 0
@@ -342,7 +342,7 @@ class People
         })()); 
 
         console.log(this.color, 'predictStep', 'walk-step', {dist_by_ml, dist_by_random}, { _step, ml_step: result.label, res: nav });
-        if (dist_by_ml <= dist_by_random) {
+        if (dist_by_ml <= dist_by_random  &&  result.label != '0') {
             _step = result.label;
             if (dist_by_ml < dist_by_random) {
                 ml_dist_win += 1
@@ -390,7 +390,7 @@ class People
 
         console.log(this.color, 'walk-dist_', { dist_by_ml, dist_by_random, label: result.label, _nav, nav: this.nav });
 
-        if ((dist_by_ml) <= (dist_by_random)) {
+        if ((dist_by_ml) <= (dist_by_random) &&  result.label != 'x') {
             if (dist_by_ml < dist_by_random) {
                 ml_win += 1
             }
@@ -655,7 +655,7 @@ window.onload = function() {
     };
 
     let foods = createFoods(100);
-    let nodes = createChain(10); // you can also pass radius as a second param
+    let nodes = createChain(5); // you can also pass radius as a second param
     
     tick();
 
