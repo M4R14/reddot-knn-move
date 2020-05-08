@@ -50,7 +50,7 @@ class Action {
         if (y == 0 || y == 0) {
             return 0
         }
-        return (Math.tan((y)/(x)))
+        return (Math.atan((y)/(x)))
     }
 
     get slope() {
@@ -93,19 +93,13 @@ class Action {
         }
 
         const data = [
-            this.zeta,
-            this.slope,
-            [(this.diff_x), (this.diff_y)],
-            q([g(this.diff_x), g(this.diff_y)]),
-            // [this.x, this.y],
-            // [this.nx, this.ny],
-            // (this.dist),
-            [g(this.diff_x), g(this.diff_y)],
-            // [this.x, this.y],
-            // this.nx, this.ny,
-            // l(this.dist),
-            // this.step, 
+            g(this.diff_x),
+            g(this.diff_y),
+            parseFloat(this.slope.toFixed(2)),
+            parseFloat(this.zeta.toFixed(2)),
         ]
+
+        console.log('mark', data)
        
         return tf.tensor(data)
     }
@@ -145,11 +139,7 @@ class Action {
         }
 
         const data = [
-            [this.diff_x, (this.diff_y)],
-            this.dist,
-            // [this.x, this.y],
-            // [this.nx, this.ny],
-            // q[g(this.diff_x), g(this.diff_y)],
+            parseFloat(this.dist.toFixed(2)),
             this.res,
             l(this.dist),
         ]
@@ -162,21 +152,49 @@ data = [
     new Action({ y: 0, x: 0, res: 'x', step: 0 }),
 ];
 
+const classifier_save = (classifier, localStorageKey) => {
+    const _classifier = classifier
+    // Save it to a string:
+    let str = JSON.stringify(
+        Object.entries(_classifier.getClassifierDataset())
+            .map(([label, data])=>[label, Array.from(data.dataSync()), data.shape])
+    )
+
+    localStorage.setItem(localStorageKey, str);
+}
+
+const classifier_load = (localStorageKey) => {
+    _classifier = knnClassifier.create();
+
+    var str = localStorage.getItem(localStorageKey);
+    if (str == null) {
+        return _classifier;
+    }
+    // Load it back into a fresh classifier:
+    _classifier.setClassifierDataset(
+        Object.fromEntries(
+            JSON.parse(str).map(([label, data, shape])=>[label, tf.tensor(data, shape)])
+        ) 
+    );
+
+    return _classifier;
+}
+
 let addExample = 0
 let eat_food = 0
 let classifier  = null;
 
 const init = async function() {
-  // Create the classifier.
-    classifier = knnClassifier.create();
-    classifierStep = knnClassifier.create();
+    // Create the classifier.
+    classifier = classifier_load('classifier-nav');
+    classifierStep = classifier_load('classifier-step');
 
 
-  // Add MobileNet activations to the model repeatedly for all classes.
-  data.forEach(act => {
-    classifier.addExample(act.tensor, act.res);
-    classifierStep.addExample(act.toTensor_step(), act.step);
-  })
+    // Add MobileNet activations to the model repeatedly for all classes.
+    data.forEach(act => {
+        classifier.addExample(act.tensor, act.res);
+        classifierStep.addExample(act.toTensor_step(), act.step);
+    })
 }
 
 init();
@@ -260,6 +278,7 @@ class People
     get x() { return this._x }
 
     async think(foods, callback) {
+        const pos = { x: this.x, y: this.y };
         const control = [
             'w', 'a', 's', 'd',
             'wa', 'wd',
@@ -270,21 +289,26 @@ class People
         if (this.step <= 0) {
             let nextNav = control[parseInt(Math.random() * control.length)]
             let nextStep = steps[parseInt(Math.random() * steps.length)]
+            // let nextStep = 1
             // this.step = 5
             // console.log(this.color,'random',{ nav: this.nav })
             if (foods) {
                 let food_min_dist = foods.filter(f => f.constructor.name == Food.name)
+                    // .filter(f => (f.x >= pos.x - 20) && (f.x <= pos.x + 20))
+                    // .filter(f => (f.y >= pos.y - 20) && (f.y <= pos.y + 20))
                     .sort((a, b) => {
-                        const dist_a = Math.sqrt(Math.pow(this.x - a.x, 2) + Math.pow( this.y - a.y, 2))
-                        const dist_b = Math.sqrt(Math.pow(this.x - b.x, 2) + Math.pow( this.y - b.y, 2))
+                        const dist_a = Math.sqrt(Math.pow(pos.x - a.x, 2) + Math.pow( pos.y - a.y, 2))
+                        const dist_b = Math.sqrt(Math.pow(pos.x - b.x, 2) + Math.pow( pos.y - b.y, 2))
                         return dist_a - dist_b
                     })[0]
         
                 if (food_min_dist) {
                     this.target = food_min_dist
-                    nextNav = await this.predictNav(food_min_dist, nextNav);
-                    nextStep = await this.predictStep(food_min_dist, nextNav, nextStep);
-                    console.log('predictStep', { nextStep, nextNav });
+                    console.warn('predictStep-pre', { nextStep, nextNav });
+                   
+                    nextNav = await this.predictNav(food_min_dist, nextNav, pos);
+                    nextStep = await this.predictStep(food_min_dist, nextNav, nextStep, pos);
+                    console.warn('predictStep-post', { nextStep, nextNav });
                 }
             }
             this.nav = nextNav
@@ -312,8 +336,7 @@ class People
 
         console.log('predictStep', { nav: this.nav, step: result.label, _step, _nav });
 
-
-        const dist_by_random = Math.round((() => { 
+        const dist_by_random = ((() => { 
            let x = this.x
            let y = this.y
             for (let index = 0; index < _step; index++) {
@@ -327,7 +350,7 @@ class People
             return dist
         })()); 
         
-        const dist_by_ml = Math.round((() => { 
+        const dist_by_ml = ((() => { 
             let x = this.x
             let y = this.y
             for (let index = 0; index < Number(result.label); index++) {
@@ -342,16 +365,17 @@ class People
         })()); 
 
         console.log(this.color, 'predictStep', 'walk-step', {dist_by_ml, dist_by_random}, { _step, ml_step: result.label, res: nav });
-        if (dist_by_ml <= dist_by_random  &&  result.label != '0') {
+        if (dist_by_ml < dist_by_random  &&  result.label != '0') {
             _step = result.label;
             if (dist_by_ml < dist_by_random) {
                 ml_dist_win += 1
             }
             console.warn (this.color,'walk-step-ml', result);
-
+            // this.main_color = 'green';
             classifierStep.addExample(action.toTensor_step(), _step);
         } else {
             random_dist_win += 1
+            // this.main_color = 'red';
             console.error(this.color,'walk-step-Random', _step);
             classifierStep.addExample(action.toTensor_step(), _step);
         }
@@ -361,11 +385,11 @@ class People
         return _step
     }
 
-    async predictNav (food_min_dist, nav) {
+    async predictNav (food_min_dist, nav, pos) {
         let _nav = nav
         const food = food_min_dist
 
-        const action = new Action({ x: food.x, y: food.y, nx: this.x, ny: this.y });
+        const action = new Action({ x: food.x, y: food.y, nx: pos.x, ny: pos.y });
         const result = await classifier.predictClass(action.tensor);
 
         if (this.use_ai) {
@@ -373,8 +397,8 @@ class People
         }
 
         const dist = (_nav_wasd) => {
-            let x = this.x
-            let y = this.y
+            let x = pos.x
+            let y = pos.y
             for (let index = 0; index < 2; index++) {
                 const poin = this.nextPoint(_nav_wasd, x, y)
                 x = poin.x
@@ -382,24 +406,28 @@ class People
             }
             let dist = Math.pow(x - food.x, 2) + Math.pow( y - food.y, 2)
             dist = Math.sqrt(dist);
-            return dist
+            return dist 
         }
 
-        const dist_by_random = dist(_nav);
+        const dist_by_random =  dist(_nav);
         const dist_by_ml = dist(result.label);
 
         console.log(this.color, 'walk-dist_', { dist_by_ml, dist_by_random, label: result.label, _nav, nav: this.nav });
 
-        if ((dist_by_ml) <= (dist_by_random) &&  result.label != 'x') {
+        if ((dist_by_ml) < (dist_by_random) &&  result.label != 'x') {
             if (dist_by_ml < dist_by_random) {
                 ml_win += 1
             }
+            this.main_color = 'blue';
             _nav = result.label;
             classifier.addExample(action.tensor, result.label);
+            console.log(this.color,'walk-ml', result);
             console.log(this.color,'walk-ml', _nav);
         } else {
+            this.main_color = 'red';
             random_win += 1
-            // console.log('walk-nav', action);
+            console.log('walk-nav', action);
+            console.log('walk-nav', { label:result.label, _nav, nav: this.nav});
             classifier.addExample(action.tensor, _nav);
             console.log(this.color,'walk-nav', result, {dist_by_ml, dist_by_random});
         }
@@ -447,9 +475,9 @@ class People
         if (over.length > 0) {
             over.forEach(food => {
                 const nextFoods = foods.filter(xf => xf.id != food.id);
-                // food.x = parseInt(Math.random() * (this.canvas.width))
-                // food.y = parseInt(Math.random() * (this.canvas.height))
-                // nextFoods.push(food)
+                food.x = parseInt(Math.random() * (this.canvas.width))
+                food.y = parseInt(Math.random() * (this.canvas.height))
+                nextFoods.push(food)
                 if (this.target.id == food.id) {
                     this.target == null
                 }
@@ -573,12 +601,12 @@ window.onload = function() {
     const update = function() {
         nodes.forEach(async node => {
             await node.think(foods)
+            node.setColor()
             if (node.step > 0) {
                 node.walk()
             }
             node.eat(foods, (next) => {foods = next})
             // node.vision(nodes, (next) => {nodes = next})
-            node.setColor()
 
         })
       }
@@ -597,6 +625,9 @@ window.onload = function() {
 
           if (node.target) {
             const dist = (distance(node.x, node.y, node.target.x, node.target.y)).toFixed(4)
+            if (dist > 200) {
+                console.log({ "node.target": node.target })
+            }
             context.fillText(
                 `dist: ${dist}` ,
                 node.x + node.radius + 2,
@@ -626,11 +657,8 @@ window.onload = function() {
     const start = new Date();
     const eLoop = document.getElementById('loop')
     const eDiffSec = document.getElementById('diff_sec')
-    const eAiWork = document.getElementById('ai-work')
-    const eEatFood = document.getElementById('eat-food')
-    const eXxx = document.getElementById('xxx')
     
-    const tick = function() {
+    const tick = async function() {
         const b = new Date();
         const diff_sec = (b - start) / 1000;
         eLoop.innerText = count;
@@ -645,8 +673,30 @@ window.onload = function() {
 
         update();
         draw();
-        requestAnimationFrame(tick);
         count += 1
+        if (count % 100 == 0) {
+            if ('x' in classifier.getClassExampleCount()) {
+                classifier.clearClass('x')
+            }
+            classifier_save(classifier, 'classifier-nav');
+            classifier_save(classifierStep, 'classifier-step');
+            console.log('classifier-nav', {
+                getClassExampleCount:  classifier.getClassExampleCount(),
+                getClassifierDataset:  classifier.getClassifierDataset(),
+                getNumClasses:  classifier.getNumClasses(),
+            })
+            console.log('classifier-step', {
+                getClassExampleCount:  classifierStep.getClassExampleCount(),
+                getClassifierDataset:  classifierStep.getClassifierDataset(),
+                getNumClasses:  classifierStep.getNumClasses(),
+            })
+
+
+            if (count % 1000 == 0) {
+                window.location.reload()
+            }
+        }
+        requestAnimationFrame(tick);
     };
 
 
@@ -654,8 +704,8 @@ window.onload = function() {
         foods.push(new Food(e.offsetX, e.offsetY, canvas))
     };
 
-    let foods = createFoods(100);
-    let nodes = createChain(5); // you can also pass radius as a second param
+    let foods = createFoods(200);
+    let nodes = createChain(1); // you can also pass radius as a second param
     
     tick();
 
@@ -664,7 +714,9 @@ window.onload = function() {
             nodes = nodes.map(n => {
                 n.use_ai = !n.use_ai
                 if (n.use_ai) {
-                    n.main_color = 'red'
+                    n.main_color = 'blue'
+                } else {
+                    n.main_color = "red"
                 }
                 return n
             })
