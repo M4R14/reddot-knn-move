@@ -95,8 +95,8 @@ class Action {
         const data = [
             g(this.diff_x),
             g(this.diff_y),
-            parseFloat(this.slope.toFixed(2)),
-            parseFloat(this.zeta.toFixed(2)),
+            parseFloat(this.slope.toFixed(4)),
+            parseFloat(this.zeta.toFixed(4)),
         ]
 
         console.log('mark', data)
@@ -226,6 +226,8 @@ class People
     _isDanger = false
     score = 0
 
+    prediction = null
+
     constructor (radius, canvas) {
         this.id = makeid(8)
         this.canvas = canvas
@@ -305,8 +307,8 @@ class People
                     this.target = food_min_dist
                     console.warn('predictStep-pre', { nextStep, nextNav });
                    
-                    nextNav = await this.predictNav(food_min_dist, nextNav, pos);
-                    // nextStep = await this.predictStep(food_min_dist, nextNav, nextStep, pos);
+                    // nextStep = await this.predictStep(food_min_dist, "", nextStep, pos);
+                    nextNav = await this.predictNav(food_min_dist, nextNav, pos, nextStep);
                     console.warn('predictStep-post', { nextStep, nextNav });
                 }
             }
@@ -384,12 +386,14 @@ class People
         return _step
     }
 
-    async predictNav (food_min_dist, nav, pos) {
+    async predictNav (food_min_dist, nav, pos, nextStep) {
         let _nav = nav
         const food = food_min_dist
 
         const action = new Action({ x: food.x, y: food.y, nx: pos.x, ny: pos.y });
         const result = await classifier.predictClass(action.tensor);
+
+       
 
         if (this.use_ai) {
             return result.label
@@ -398,7 +402,7 @@ class People
         const dist = (_nav_wasd) => {
             let x = pos.x
             let y = pos.y
-            for (let index = 0; index < 2; index++) {
+            for (let index = 0; index < nextStep; index++) {
                 const poin = this.nextPoint(_nav_wasd, x, y)
                 x = poin.x
                 y = poin.y
@@ -417,12 +421,14 @@ class People
             if (dist_by_ml < dist_by_random) {
                 ml_win += 1
             }
+            this.prediction = result
             this.main_color = 'blue';
             _nav = result.label;
             classifier.addExample(action.tensor, result.label);
             console.log(this.color,'walk-ml', result);
             console.log(this.color,'walk-ml', _nav);
         } else {
+            this.prediction = null
             this.main_color = 'red';
             random_win += 1
             console.log('walk-nav', action);
@@ -616,8 +622,15 @@ window.onload = function() {
           context.fillStyle = node.color;
           context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
           context.fillText(`score: ${node.score}`, node.x + node.radius + 2, node.y + 2);
+
+          let confidences = 0
+          if (node.prediction) {
+            confidences = node.prediction.confidences[node.prediction.label]
+            confidences = parseFloat(confidences.toFixed(4))
+          }
+
           context.fillText(
-            `${node.nav},${node.step}` ,
+            `${node.nav} (${confidences})` ,
             node.x + node.radius + 2,
             node.y - 8
           );
@@ -706,7 +719,7 @@ window.onload = function() {
     };
 
     let foods = createFoods(200);
-    let nodes = createChain(5); // you can also pass radius as a second param
+    let nodes = createChain(2); // you can also pass radius as a second param
     
     tick();
 
