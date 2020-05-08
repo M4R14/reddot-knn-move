@@ -152,8 +152,7 @@ data = [
     new Action({ y: 0, x: 0, res: 'x', step: 0 }),
 ];
 
-const classifier_save = (classifier, localStorageKey) => {
-    const _classifier = classifier
+const classifier_save = (_classifier, localStorageKey) => {
     // Save it to a string:
     let str = JSON.stringify(
         Object.entries(_classifier.getClassifierDataset())
@@ -288,8 +287,8 @@ class People
 
         if (this.step <= 0) {
             let nextNav = control[parseInt(Math.random() * control.length)]
-            let nextStep = steps[parseInt(Math.random() * steps.length)]
-            // let nextStep = 1
+            // let nextStep = steps[parseInt(Math.random() * steps.length)]
+            let nextStep = 1
             // this.step = 5
             // console.log(this.color,'random',{ nav: this.nav })
             if (foods) {
@@ -307,7 +306,7 @@ class People
                     console.warn('predictStep-pre', { nextStep, nextNav });
                    
                     nextNav = await this.predictNav(food_min_dist, nextNav, pos);
-                    nextStep = await this.predictStep(food_min_dist, nextNav, nextStep, pos);
+                    // nextStep = await this.predictStep(food_min_dist, nextNav, nextStep, pos);
                     console.warn('predictStep-post', { nextStep, nextNav });
                 }
             }
@@ -621,7 +620,9 @@ window.onload = function() {
             `${node.nav},${node.step}` ,
             node.x + node.radius + 2,
             node.y - 8
-            );
+          );
+
+          context.arc(node.x, node.y, node.step, 0, 2 * Math.PI);
 
           if (node.target) {
             const dist = (distance(node.x, node.y, node.target.x, node.target.y)).toFixed(4)
@@ -705,7 +706,7 @@ window.onload = function() {
     };
 
     let foods = createFoods(200);
-    let nodes = createChain(1); // you can also pass radius as a second param
+    let nodes = createChain(5); // you can also pass radius as a second param
     
     tick();
 
