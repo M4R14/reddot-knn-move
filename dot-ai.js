@@ -6,6 +6,7 @@ class Action {
     res= ''
     props = {}
     step = 0
+    f=[]
 
     constructor(props) {
         this.props = props
@@ -45,12 +46,12 @@ class Action {
     }
 
     get zeta() {
-        const y = Math.abs(this.y - this.ny)
-        const x =  Math.abs(this.x - this.nx)
+        const y = (this.y - this.ny)
+        const x =  (this.x - this.nx)
         if (y == 0 || y == 0) {
             return 0
         }
-        return (Math.atan((y)/(x)))
+        return Math.atan2(y, x) * 180 / Math.PI;
     }
 
     get slope() {
@@ -95,8 +96,12 @@ class Action {
         const data = [
             g(this.diff_x),
             g(this.diff_y),
-            parseFloat(this.slope.toFixed(4)),
-            parseFloat(this.zeta.toFixed(4)),
+            // parseFloat(this.slope.toFixed(4)),
+            Math.ceil(this.zeta),
+            this.dist > 20 ? 0 : Math.ceil(this.dist),
+            this.diff_x > 20 || this.diff_x < -20 ? 0 : Math.ceil(this.diff_x),
+            this.diff_y > 20 || this.diff_y < -20 ? 0 : Math.ceil(this.diff_y),
+            this.f,
         ]
 
         console.log('mark', data)
@@ -191,7 +196,7 @@ const init = async function() {
 
     // Add MobileNet activations to the model repeatedly for all classes.
     data.forEach(act => {
-        classifier.addExample(act.tensor, act.res);
+        // classifier.addExample(act.tensor, act.res);
         classifierStep.addExample(act.toTensor_step(), act.step);
     })
 }
@@ -295,8 +300,6 @@ class People
             // console.log(this.color,'random',{ nav: this.nav })
             if (foods) {
                 let food_min_dist = foods.filter(f => f.constructor.name == Food.name)
-                    // .filter(f => (f.x >= pos.x - 20) && (f.x <= pos.x + 20))
-                    // .filter(f => (f.y >= pos.y - 20) && (f.y <= pos.y + 20))
                     .sort((a, b) => {
                         const dist_a = Math.sqrt(Math.pow(pos.x - a.x, 2) + Math.pow( pos.y - a.y, 2))
                         const dist_b = Math.sqrt(Math.pow(pos.x - b.x, 2) + Math.pow( pos.y - b.y, 2))
@@ -390,10 +393,24 @@ class People
         let _nav = nav
         const food = food_min_dist
 
-        const action = new Action({ x: food.x, y: food.y, nx: pos.x, ny: pos.y });
-        const result = await classifier.predictClass(action.tensor);
+        const action = new Action({
+            x: food.x,
+            y: food.y,
+            nx: pos.x,
+            ny: pos.y,
+            f: this.friends.map(f => {
+                return Math.ceil(Math.sqrt(Math.pow(pos.x - f.x, 2) + Math.pow(pos.y - f.y, 2)));
+            })
+        });
 
-       
+        let result = null;
+        try {
+            result = await classifier.predictClass(action.tensor);
+        } catch (error) {
+            console.log(error)
+            classifier.addExample(action.tensor, _nav);
+            return _nav
+        }
 
         if (this.use_ai) {
             return result.label
@@ -422,9 +439,9 @@ class People
                 ml_win += 1
             }
             this.prediction = result
-            this.main_color = 'blue';
+            this.main_color = 'deepskyblue';
             _nav = result.label;
-            classifier.addExample(action.tensor, result.label);
+            // classifier.addExample(action.tensor, result.label);
             console.log(this.color,'walk-ml', result);
             console.log(this.color,'walk-ml', _nav);
         } else {
@@ -440,14 +457,17 @@ class People
         return _nav
     }
 
+    friends = []
+
     nextPoint (nav, _x = null, _y = null) {
+        let _speed = this.speed
         let x = (_x == null) ? this.x : _x
         let y = (_y == null) ? this.y : _y
         const xfun = {
-            w: () => y -= this.speed,
-            s: () => y += this.speed,
-            a: () => x -= this.speed,
-            d: () => x += this.speed,
+            w: () => y -= _speed,
+            s: () => y += _speed,
+            a: () => x -= _speed,
+            d: () => x += _speed,
         }
 
         for (let index = 0; index < nav.length; index++) {
@@ -456,6 +476,20 @@ class People
                 xfun[key]()
             }
         }
+
+        this.friends.forEach(f => {
+            if (x >= f.x - f.radius && x <= f.x + f.radius) {
+                if (this.score < f.score) {
+                    x -= 1
+                }
+            }
+
+            if (y >= f.y - f.radius && y <= f.y + f.radius) {
+                if (this.score < f.score) {
+                    y -= 1
+                }
+            }
+        })
 
         return { x, y }
     }
@@ -569,8 +603,8 @@ window.onload = function() {
     const colors = ["blue", "green", "orange", "red", "#152c40"];
     let isMouseDown = false;
     document.getElementById('canvas-place').appendChild(canvas);
-    canvas.width  = 800;
-    canvas.height = 500
+    canvas.width  = 200;
+    canvas.height = 200
     // styles -------------------------
     document.body.style.background = "#000000";
     canvas.style.background = "#152c40";
@@ -605,6 +639,7 @@ window.onload = function() {
 
     const update = function() {
         nodes.forEach(async node => {
+            node.friends = nodes.filter(nd => nd.id != node.id)
             await node.think(foods)
             node.setColor()
             if (node.step > 0) {
@@ -614,58 +649,59 @@ window.onload = function() {
             // node.vision(nodes, (next) => {nodes = next})
 
         })
-      }
-      const draw = function() {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        nodes.forEach(node => {
-          context.beginPath();
-          context.fillStyle = node.color;
-          context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
-          context.fillText(`score: ${node.score}`, node.x + node.radius + 2, node.y + 2);
+    }
+    const draw = function() {
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    nodes.forEach(node => {
+        context.beginPath();
+        context.fillStyle = node.color;
+        context.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
 
-          let confidences = 0
-          if (node.prediction) {
-            confidences = node.prediction.confidences[node.prediction.label]
-            confidences = parseFloat(confidences.toFixed(4))
-          }
+        context.fillText(`score: ${node.score}`, node.x + node.radius + 2, node.y + 2);
 
-          context.fillText(
-            `${node.nav} (${confidences})` ,
+        let confidences = 0
+        if (node.prediction) {
+        confidences = node.prediction.confidences[node.prediction.label]
+        confidences = parseFloat(confidences.toFixed(4))
+        }
+
+        context.fillText(
+        `${node.nav} (${confidences})` ,
+        node.x + node.radius + 2,
+        node.y - 8
+        );
+
+        context.arc(node.x, node.y, node.step, 0, 2 * Math.PI);
+
+        if (node.target) {
+        const dist = (distance(node.x, node.y, node.target.x, node.target.y)).toFixed(4)
+        if (dist > 200) {
+            console.log({ "node.target": node.target })
+        }
+        context.fillText(
+            `dist: ${dist}` ,
             node.x + node.radius + 2,
-            node.y - 8
-          );
+            node.y + 12
+        );
 
-          context.arc(node.x, node.y, node.step, 0, 2 * Math.PI);
+        context.moveTo(node.x, node.y);
+        context.strokeStyle = node.color;
+        context.lineTo(node.target.x, node.target.y);
+        context.stroke();
+        }
 
-          if (node.target) {
-            const dist = (distance(node.x, node.y, node.target.x, node.target.y)).toFixed(4)
-            if (dist > 200) {
-                console.log({ "node.target": node.target })
-            }
-            context.fillText(
-                `dist: ${dist}` ,
-                node.x + node.radius + 2,
-                node.y + 12
-            );
+        context.fill();
+        context.closePath();
+    })
 
-            context.moveTo(node.x, node.y);
-            context.strokeStyle = node.color;
-            context.lineTo(node.target.x, node.target.y);
-            context.stroke();
-          }
-
-          context.fill();
-          context.closePath();
-        })
-
-        foods.forEach(food => {
-            context.beginPath();
-            context.fillStyle = food.color;
-            context.arc(food.x, food.y, food.radius, 0, 2 * Math.PI);
-            context.fill();
-            context.closePath();
-        })
-      };
+    foods.forEach(food => {
+        context.beginPath();
+        context.fillStyle = food.color;
+        context.arc(food.x, food.y, food.radius, 0, 2 * Math.PI);
+        context.fill();
+        context.closePath();
+    })
+    };
 
     let count = 0
     const start = new Date();
@@ -718,8 +754,8 @@ window.onload = function() {
         foods.push(new Food(e.offsetX, e.offsetY, canvas))
     };
 
-    let foods = createFoods(200);
-    let nodes = createChain(2); // you can also pass radius as a second param
+    let foods = createFoods(10);
+    let nodes = createChain(1); // you can also pass radius as a second param
     
     tick();
 
