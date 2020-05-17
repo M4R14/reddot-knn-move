@@ -98,10 +98,10 @@ class Action {
             g(this.diff_y),
             // parseFloat(this.slope.toFixed(4)),
             Math.ceil(this.zeta),
-            this.dist > 20 ? 0 : Math.ceil(this.dist),
-            this.diff_x > 20 || this.diff_x < -20 ? 0 : Math.ceil(this.diff_x),
-            this.diff_y > 20 || this.diff_y < -20 ? 0 : Math.ceil(this.diff_y),
-            this.f,
+            // this.dist > 20 ? 0 : Math.ceil(this.dist),
+            // this.diff_x > 20 || this.diff_x < -20 ? 0 : Math.ceil(this.diff_x),
+            // this.diff_y > 20 || this.diff_y < -20 ? 0 : Math.ceil(this.diff_y),
+            // this.f,
         ]
 
         console.log('mark', data)
@@ -227,7 +227,7 @@ class People
     radius = 1
     canvas =  null
     nav = 'w'
-    speed = 2.5
+    speed = 1
     _isDanger = false
     score = 0
 
@@ -283,6 +283,127 @@ class People
 
     get x() { return this._x }
 
+    set_target (foods, friends) {
+        const pos = { x: this.x, y: this.y };
+        let food_min_dist = foods
+            .filter(f => f.constructor.name == Food.name)
+            // .filter(f => {
+            //     const friendsHasTarget = friends
+            //         .filter(fr => fr.target !== null)
+            //         .find(fr => fr.target == f.id)
+            //     // console.log({friendsHasTarget})
+            //     return friendsHasTarget == undefined
+            // })
+            .sort((a, b) => {
+                const dist_a = Math.sqrt(Math.pow(pos.x - a.x, 2) + Math.pow( pos.y - a.y, 2))
+                const dist_b = Math.sqrt(Math.pow(pos.x - b.x, 2) + Math.pow( pos.y - b.y, 2))
+                return dist_a - dist_b
+            })[0]
+        this.target = food_min_dist
+    }
+
+    async think_v2(foods, callback) {
+        const pos = { x: this.x, y: this.y };
+        const control = [
+            'w', 'a', 's', 'd',
+            'wa', 'wd',
+            'as', 'ds',
+        ]
+        const steps = Array.from({length: 10}, (v, k) => k+1); 
+
+        if (this.step <= 0) {
+            let nextStep = 1
+            let nextNav = control[parseInt(Math.random() * control.length)]
+            let nextNav_arr = control
+            // for (let index = 0; index < 100; index++) {
+            //     nextNav_arr.push(control[parseInt(Math.random() * control.length)])
+            // }
+            // let nextStep = steps[parseInt(Math.random() * steps.length)]
+            // this.step = 5
+            // console.log(this.color,'random',{ nav: this.nav })
+            if (this.target) {
+                const food_min_dist = this.target
+                console.warn('predictStep-pre', { nextStep, nextNav });
+               
+                // nextStep = await this.predictStep(food_min_dist, "", nextStep, pos);
+                nextNav = await this.predictNav_v2(food_min_dist, nextNav_arr, pos, nextStep);
+                console.warn('predictStep-post', { nextStep, nextNav });
+            }
+            this.nav = nextNav
+            this.step = nextStep
+        }
+    }
+
+    async predictNav_v2 (food_min_dist, nav, pos, nextStep) {
+        let _nav = nav
+        const food = food_min_dist
+
+        const dist = (_nav_wasd) => {
+            let x = pos.x
+            let y = pos.y
+            for (let index = 0; index < nextStep; index++) {
+                const poin = this.nextPoint(_nav_wasd, x, y)
+                x = poin.x
+                y = poin.y
+            }
+            let dist = Math.pow(x - food.x, 2) + Math.pow( y - food.y, 2)
+            dist = Math.sqrt(dist);
+            return dist 
+        }
+
+        _nav = _nav.map(n => [ n, dist(n) ]).reduce((a, b) => a[1] > b[1] ? b : a , [ 0, Infinity ])[0]
+
+        const action = new Action({
+            x: food.x,
+            y: food.y,
+            nx: pos.x,
+            ny: pos.y,
+            f: this.friends.map(f => {
+                return Math.ceil(Math.sqrt(Math.pow(pos.x - f.x, 2) + Math.pow(pos.y - f.y, 2)));
+            })
+        });
+
+        let result = null;
+        try {
+            result = await classifier.predictClass(action.tensor);
+        } catch (error) {
+            console.log(error)
+            classifier.addExample(action.tensor, _nav);
+            return _nav
+        }
+
+        if (this.use_ai) {
+            return result.label
+        }
+
+        const dist_by_random =  dist(_nav);
+        const dist_by_ml = dist(result.label);
+
+        console.log(this.color, 'walk-dist_', { dist_by_ml, dist_by_random, label: result.label, _nav, nav: this.nav });
+
+        if ((dist_by_ml) <= (dist_by_random) &&  result.label != 'x') {
+            if (dist_by_ml <= dist_by_random) {
+                ml_win += 1
+            }
+            this.prediction = result
+            this.main_color = 'deepskyblue';
+            _nav = result.label;
+            // classifier.addExample(action.tensor, result.label);
+            console.log(this.color,'walk-ml', result);
+            console.log(this.color,'walk-ml', _nav);
+        } else {
+            this.prediction = null
+            this.main_color = 'red';
+            random_win += 1
+            console.log('walk-nav', action);
+            console.log('walk-nav', { label:result.label, _nav, nav: this.nav});
+            classifier.addExample(action.tensor, _nav);
+            console.log(this.color,'walk-nav', result, {dist_by_ml, dist_by_random});
+        }
+        g_data.push([loop += 1, ml_win, random_win ])
+        return _nav
+    }
+
     async think(foods, callback) {
         const pos = { x: this.x, y: this.y };
         const control = [
@@ -293,9 +414,9 @@ class People
         const steps = Array.from({length: 10}, (v, k) => k+1); 
 
         if (this.step <= 0) {
+            let nextStep = 1
             let nextNav = control[parseInt(Math.random() * control.length)]
             // let nextStep = steps[parseInt(Math.random() * steps.length)]
-            let nextStep = 1
             // this.step = 5
             // console.log(this.color,'random',{ nav: this.nav })
             if (foods) {
@@ -603,8 +724,8 @@ window.onload = function() {
     const colors = ["blue", "green", "orange", "red", "#152c40"];
     let isMouseDown = false;
     document.getElementById('canvas-place').appendChild(canvas);
-    canvas.width  = 200;
-    canvas.height = 200
+    canvas.width  = 500;
+    canvas.height = 500
     // styles -------------------------
     document.body.style.background = "#000000";
     canvas.style.background = "#152c40";
@@ -637,12 +758,21 @@ window.onload = function() {
         return _foods;
     }
 
+    const food_node = [];
+
     const update = function() {
         nodes.forEach(async node => {
             node.friends = nodes.filter(nd => nd.id != node.id)
-            await node.think(foods)
-            node.setColor()
+            await node.think_v2(foods)
             if (node.step > 0) {
+                const _foods = foods.filter(f => nodes
+                    .map(n => n.target)
+                    .filter(n => n != null)
+                    .find(fn => fn.id == f.id) == undefined
+                )
+                node.set_target(_foods, nodes.filter(nd => nd.id != node.id))
+                node.setColor()
+
                 node.walk()
             }
             node.eat(foods, (next) => {foods = next})
@@ -652,6 +782,8 @@ window.onload = function() {
     }
     const draw = function() {
     context.clearRect(0, 0, canvas.width, canvas.height);
+
+
     nodes.forEach(node => {
         context.beginPath();
         context.fillStyle = node.color;
@@ -661,14 +793,14 @@ window.onload = function() {
 
         let confidences = 0
         if (node.prediction) {
-        confidences = node.prediction.confidences[node.prediction.label]
-        confidences = parseFloat(confidences.toFixed(4))
+            confidences = node.prediction.confidences[node.prediction.label]
+            confidences = parseFloat(confidences.toFixed(4))
         }
 
         context.fillText(
-        `${node.nav} (${confidences})` ,
-        node.x + node.radius + 2,
-        node.y - 8
+            `${node.nav} (${confidences})` ,
+            node.x + node.radius + 2,
+            node.y - 8
         );
 
         context.arc(node.x, node.y, node.step, 0, 2 * Math.PI);
@@ -742,7 +874,7 @@ window.onload = function() {
             })
 
 
-            if (count % 1000 == 0) {
+            if (count % 500 == 0) {
                 window.location.reload()
             }
         }
@@ -754,8 +886,8 @@ window.onload = function() {
         foods.push(new Food(e.offsetX, e.offsetY, canvas))
     };
 
-    let foods = createFoods(10);
-    let nodes = createChain(1); // you can also pass radius as a second param
+    let foods = createFoods(20);
+    let nodes = createChain(10); // you can also pass radius as a second param
     
     tick();
 
@@ -764,7 +896,7 @@ window.onload = function() {
             nodes = nodes.map(n => {
                 n.use_ai = !n.use_ai
                 if (n.use_ai) {
-                    n.main_color = 'blue'
+                    n.main_color = 'green'
                 } else {
                     n.main_color = "red"
                 }
