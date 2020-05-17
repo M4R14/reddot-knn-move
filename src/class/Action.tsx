@@ -76,34 +76,6 @@ export class Action {
             Math.ceil(this.zeta),
         ]
 
-        console.log('mark', data)
-       
-        return tf.tensor(data)
-    }
-    toTensor_step() {
-        const l = (value: number) => {
-            value = Math.abs(value)
-            // if (value <= 40) { return value }
-            if (value <= 1) { return 'L0' }
-            else if (value <= 2.5) { return 'L0.25' }
-            else if (value <= 5) { return 'L0.5' }
-            else if (value <= 10) { return 'L1' }
-            else if (value <= 20) { return 'L2' }
-            else if (value <= 25) { return 'L2.5' }
-            else if (value <= 30) { return 'L3' }
-            else if (value <= 50) { return 'L3' }
-            else if (value <= 70) { return 'L7' }
-            else if (value <= 110) { return 'L110' }
-            else if (value <= 130) { return 'L130' }
-            else { return 'OUT'  }
-        }
-
-        const data = [
-            parseFloat(this.dist.toFixed(2)),
-            this.res,
-            l(this.dist),
-        ]
-        // console.log('walk-step toTensor_step', data)
         return tf.tensor(data)
     }
 }
