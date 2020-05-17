@@ -1,109 +1,27 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Chain</title>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
-      google.charts.load('current', {'packages':['corechart']});
-      google.charts.setOnLoadCallback(drawChart);
-      google.charts.setOnLoadCallback(drawChartDist);
-      google.charts.setOnLoadCallback(drawChartMl);
-
-      let ml_case = 0
-      let random_case = 0
-
-      let ml_win = 0
-      let random_win = 0
-      let loop = 0
-      let = g_data = [
-          ['loop', 'ml', 'random'],
-          [0, 0, 0],
-      ]
-
-      let loop_dist = 0
-      let ml_dist_win = 0
-      let random_dist_win = 0
-      const g_data_dist = [
-        ['loop', 'ml', 'random'],
-        [0, 0, 0],
-      ]
-
-      function drawChartMl(g_data_dist) {
-        var data = google.visualization.arrayToDataTable([
-          [ 'loop', 'ml'],
-          // ...g_data_dist.map(n => [ n[0],  n[1] ])
-        ]);
-
-        var options = {
-          title: 'Company Performance',
-          curveType: 'function',
-          legend: { position: 'bottom' }
-        };
-
-        var chart = new google.visualization.LineChart(document.getElementById('curve_chart_ml'));
-
-        chart.draw(data, options);
-      }
-
-      function drawChart(g_data) {
-        var data = google.visualization.arrayToDataTable(g_data);
-
-        var options = {
-          title: 'Nav (W, A, S, D)',
-          // curveType: 'function',
-          legend: { position: 'bottom' }
-        };
-
-        var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
-
-        chart.draw(data, options);
-      }
-
-      function drawChartDist(g_data_dist) {
-        var data = google.visualization.arrayToDataTable(g_data_dist);
-
-        var options = {
-          title: 'Step Move',
-          // curveType: 'function',
-          legend: { position: 'bottom' }
-        };
-
-        var chart = new google.visualization.LineChart(document.getElementById('curve_chart_dis'));
-
-        chart.draw(data, options);
-      }
-    </script>
+    <title>Move Dot</title>
   </head>
   <body>
-    <table>
+    <table style="width: 100%;" >
       <tr align="center" style="background-color: white;color: black;"  >
-        <td width="50" >Loop: <h2 id="loop">0</h2></td>
-        <td width="50" >sec: <h2 id="diff_sec">0</h2></td>
-        <td align="left" width="200" rowspan="2" >
+        <td width="" >Loop: <h2 id="loop">0</h2></td>
+        <td width="" >sec: <h2 id="diff_sec">0</h2></td>
+        <td width="" >
           <input type="checkbox" id="use-ai" name="vehicle1" value="Bike">
           <label for="use-ai"> Use AI</label><br>
-          <br>
-          <div id="curve_chart" style="width: 400px; height: 150px"></div>
-          <div id="curve_chart_dis" style="width: 400px; height: 150px"></div>
-        </td>
-        <td align="left" width="200" rowspan="2" >
-          <div id="curve_chart_ml" style="width: 400px; height: 150px"></div>
         </td>
       </tr>
       <tr>
-        <td colspan="2" id="canvas-place" >
+        <td colspan="3" id="canvas-place" >
           <!-- <canvas id="canvas"></canvas> -->
         </td>
       </tr>
     </table>
-   
-    
 
-     <!-- Load TensorFlow.js -->
-     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-     <!-- Load KNN Classifier -->
-     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
-     
-    <script src="dot-ai.js"></script>
+    <script> var exports = {}; </script>
+    <script src="dist/bundle.js" ></script>
+    <!-- <script src="build/dot-ai.js.map" ></script> -->
   </body>
 </html>
