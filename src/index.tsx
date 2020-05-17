@@ -50,21 +50,12 @@ const classifier_load = (localStorageKey: string) => {
     return _classifier;
 }
 
-let addExample = 0
 export let eat_food = 0
 export let classifier : any  = null;
 
 const init = async function() {
     // Create the classifier.
     classifier = classifier_load('classifier-nav');
-    let classifierStep = classifier_load('classifier-step');
-
-
-    // Add MobileNet activations to the model repeatedly for all classes.
-    dataInit.forEach(act => {
-        // classifier.addExample(act.tensor, act.res);
-        classifierStep.addExample(act.toTensor_step(), act.step);
-    })
 }
 
 init();
