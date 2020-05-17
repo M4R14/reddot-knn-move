@@ -724,7 +724,7 @@ window.onload = function() {
     const colors = ["blue", "green", "orange", "red", "#152c40"];
     let isMouseDown = false;
     document.getElementById('canvas-place').appendChild(canvas);
-    canvas.width  = 500;
+    canvas.width  = 900;
     canvas.height = 500
     // styles -------------------------
     document.body.style.background = "#000000";
@@ -765,11 +765,7 @@ window.onload = function() {
             node.friends = nodes.filter(nd => nd.id != node.id)
             await node.think_v2(foods)
             if (node.step > 0) {
-                const _foods = foods.filter(f => nodes
-                    .map(n => n.target)
-                    .filter(n => n != null)
-                    .find(fn => fn.id == f.id) == undefined
-                )
+                const _foods = foods
                 node.set_target(_foods, nodes.filter(nd => nd.id != node.id))
                 node.setColor()
 
@@ -867,11 +863,11 @@ window.onload = function() {
                 getClassifierDataset:  classifier.getClassifierDataset(),
                 getNumClasses:  classifier.getNumClasses(),
             })
-            console.log('classifier-step', {
-                getClassExampleCount:  classifierStep.getClassExampleCount(),
-                getClassifierDataset:  classifierStep.getClassifierDataset(),
-                getNumClasses:  classifierStep.getNumClasses(),
-            })
+            // console.log('classifier-step', {
+            //     getClassExampleCount:  classifierStep.getClassExampleCount(),
+            //     getClassifierDataset:  classifierStep.getClassifierDataset(),
+            //     getNumClasses:  classifierStep.getNumClasses(),
+            // })
 
 
             if (count % 500 == 0) {
@@ -886,8 +882,8 @@ window.onload = function() {
         foods.push(new Food(e.offsetX, e.offsetY, canvas))
     };
 
-    let foods = createFoods(20);
-    let nodes = createChain(10); // you can also pass radius as a second param
+    let foods = createFoods(100);
+    let nodes = createChain(3); // you can also pass radius as a second param
     
     tick();
 
