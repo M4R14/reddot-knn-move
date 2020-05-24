@@ -15,9 +15,6 @@ class Pos {
     }
 
     render(context: CanvasRenderingContext2D) {
-        if (this.color == "blue") {
-            console.log('render', this.color)
-        }
         context.beginPath();
         context.fillStyle = this.color;
         context.arc(this.x, this.y, this.r, 0, 2 * Math.PI);
@@ -47,8 +44,8 @@ const craeteFood = (num_of_dot: number, width: number, height: number) => {
     let _data = []
     for (let index = 0; index < num_of_dot; index++) {
         const data = new Food();
-        data.x = parseInt((Math.random() * (width - 50) + 50).toString())
-        data.y = parseInt((Math.random() * (height - 50) + 50).toString())
+        data.x = parseInt((Math.random() * (width )).toString())
+        data.y = parseInt((Math.random() * (height )).toString())
         _data.push(data)
     }
 
@@ -96,7 +93,7 @@ window.onload = async () => {
         const context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);
 
-        console.log({dots})
+        // console.log({dots})
         dots.forEach(async (d: Dot) => {
             d.render(context);
             const _x = d.x;
@@ -121,7 +118,7 @@ window.onload = async () => {
             context.stroke();
             context.closePath();
             
-            let _zeta = Math.ceil(Math.random() * 360);
+            let _zeta = [ 0, 90, 180, 270 ][ Math.ceil(Math.random() * 3) ];
             let predict: any = null;
             const tensor = tf.tensor([target.food.x - _x, target.food.y - _y]);
             if (d.ml) {
@@ -148,9 +145,9 @@ window.onload = async () => {
             } else {
                 d.color = "red";
             }
-            if (d.ml && predict != null) {
-                console.log('####', d.color, predict);
-            }
+            // if (d.ml && predict != null) {
+            //     console.log('####', d.color, predict);
+            // }
 
             context.beginPath();
             context.fillStyle = d.color;
